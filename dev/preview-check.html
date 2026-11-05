@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preview check</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; margin: 0; padding: 16px; background: #fff; color: #111; }
+    h1 { font-size: 1.25rem; margin: 0 0 12px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { padding: 10px 12px; margin-bottom: 8px; border-radius: 6px; background: #eee; word-break: break-word; }
+    li.pass { background: #d9f2df; }
+    li.fail { background: #f8d7d7; }
+    small { color: #555; }
+  </style>
+</head>
+<body>
+  <h1>Acode preview check</h1>
+  <ul id="results"></ul>
+  <p><small>Reload the page once to check that IndexedDB keeps data between loads.</small></p>
+
+  <!-- Classic script: reports page info and flags a failure if the module never runs. -->
+  <script>
+    window.report = function (name, ok, detail) {
+      var li = document.createElement('li');
+      // ok: true = pass, false = fail, null = not checked yet
+      li.className = ok === null ? '' : ok ? 'pass' : 'fail';
+      li.textContent = (ok === null ? 'WAIT ' : ok ? 'PASS ' : 'FAIL ') + name + (detail ? ': ' + detail : '');
+      document.getElementById('results').appendChild(li);
+    };
+    report('Page address', true, location.href);
+    report('Secure page (needed for randomUUID)', window.isSecureContext === true,
+      'isSecureContext = ' + window.isSecureContext);
+    setTimeout(function () {
+      if (!window.moduleRan) report('ES module import', false, 'module script did not run within 3 s');
+    }, 3000);
+  </script>
+
+  <script type="module" src="./preview-check.js"></script>
+</body>
+</html>
