@@ -204,7 +204,7 @@ A **multiEntry** index adds one index entry for each ID in the array, so "all ta
 **Keeping data safe:**
 
 - **Persistent storage:** at startup, the app calls `navigator.storage.persist()` (if available) so the browser doesn't clear the data when the device runs low on space. If the browser says no, the app still works; the result can be checked with `navigator.storage.persisted()`.
-- **Open in two places:** the app may be open in more than one tab or window at once (e.g. Acode's preview and a desktop browser on the same address). Every open connection listens for `versionchange` and closes itself, so a database upgrade in another tab isn't stuck. Opening the database handles `blocked` by telling the user to close the app's other tabs.
+- **Open in two places:** the app may be open in more than one tab or window at once in the same browser (e.g. two tabs on `localhost:8158`). Different browsers, or Acode's preview and a separate browser app, keep separate data, so they never share or block the same database. Every open connection listens for `versionchange` and closes itself, so a database upgrade in another tab isn't stuck. Opening the database handles `blocked` by telling the user to close the app's other tabs.
 
 ## 6. JSON export/import format
 
