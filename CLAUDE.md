@@ -27,13 +27,13 @@ Project Workbench is a single-user, offline-first browser app. It tracks project
 
 ## Docs
 
-- `docs/ARCHITECTURE.md`: tech decisions, layers, entities, repo layout, constraints.
-- `docs/DATA_MODEL.md`: v0.3, approved by the owner (2026-11-05). Field definitions, rules, IndexedDB layout and the JSON export format. Follow it exactly; propose changes with **[Proposed]** before implementing them.
+- `docs/ARCHITECTURE.md`: v0.2. Tech decisions, layers, **shared transactions (§2.1)** and **the `WorkbenchError` codes (§2.2)**, entities, repo layout, constraints.
+- `docs/DATA_MODEL.md`: v0.4, approved by the owner (2026-11-05). Field definitions, rules, IndexedDB layout and the JSON export format. Follow it exactly; propose changes with **[Proposed]** before implementing them.
 - `docs/DESIGN_v0.3-1.md`: design spec v0.3 (draft). Covers product goal, user flow, screens (Dashboard, Project Workspace, Active Work Session, Session History, Data Management), the widget-based workspace, content organization, accessibility rules, and the **MVP acceptance checks** (§7) that define "done".
 
 ### Gaps between the design and the data model
 
-The design (v0.3) is ahead of `DATA_MODEL.md` (v0.2), and the design itself says the data docs must be updated before implementation.
+The design (v0.3) was ahead of `DATA_MODEL.md` v0.2. The data model has since caught up.
 
 **Owner decision (2026-11-05): where the design and the data model conflict, the data model wins.** These are settled, and the code follows `DATA_MODEL.md`:
 
@@ -58,6 +58,7 @@ UI (js/ui/) → services (js/services/) → repositories (js/storage/) → Index
 ```
 
 - The UI never accesses the database. Services contain no DOM or storage code. Repositories contain no UI logic.
+- Services own transactions: `withTransaction(storeNames, mode, work)` in `js/storage/db.js` opens one transaction per action, and every repository method takes `tx` as its first argument. Inside `work`, only await repository calls (an IndexedDB transaction closes on any other waiting). Expected failures throw `WorkbenchError` with a code (`js/errors.js`).
 - Entities: Project, TaskList, Task, Note, Tag, Widget, WorkSession. Widgets only display content. Only one active session (`endedAt: null`) is allowed in the whole app.
 - Resume context is computed when needed, never stored.
 
@@ -72,5 +73,5 @@ UI (js/ui/) → services (js/services/) → repositories (js/storage/) → Index
 
 - Code is a bare skeleton: a minimal `index.html` and empty `css/style.css` and `js/app.js`.
 - Acode preview check passed (see "Acode preview" above). The check page is in `dev/` on branch `chore/preview-check`, kept until the MVP is done.
-- Docs: `ARCHITECTURE.md` (updated for Acode and the v0.3 entities), `DATA_MODEL.md` v0.3 (approved), `DESIGN_v0.3-1.md` (draft; `DATA_MODEL.md` wins on conflicts).
-- Next step: start the storage layer (`js/storage/`), following `DATA_MODEL.md` §5.
+- Docs: `ARCHITECTURE.md` v0.2 (transactions, errors, v0.3 entities), `DATA_MODEL.md` v0.4 (approved; v0.4 adds clarifications on trimming, name comparison, `updatedAt` side effects, collapsing in archived projects, persistent storage and multi-tab handling), `DESIGN_v0.3-1.md` (draft; `DATA_MODEL.md` wins on conflicts).
+- Next step: start the storage layer (`js/storage/db.js`, the repositories, and `js/errors.js`), following `DATA_MODEL.md` §5 and `ARCHITECTURE.md` §2.1–2.2.

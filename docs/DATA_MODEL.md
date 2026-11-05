@@ -1,10 +1,10 @@
 # Project Workbench — Data Model
 
-**Version:** 0.3 (approved)  
+**Version:** 0.4 (approved)  
 **Scope:** MVP  
 **Builds on:** [ARCHITECTURE.md](ARCHITECTURE.md) §3 (Core data entities) and §5 (Operating constraints), and [DESIGN_v0.3-1.md](DESIGN_v0.3-1.md) §4–5 (widgets and content organization).
 
-This document defines the exact shape of stored records, the rules that keep them consistent, how they are laid out in IndexedDB, and the JSON backup format. All decisions in this version are approved by the owner (v0.2, then the v0.3 additions for task lists, notes, tags, widgets and stored ordering on 2026-11-05). New proposals are marked **[Proposed]** until approved.
+This document defines the exact shape of stored records, the rules that keep them consistent, how they are laid out in IndexedDB, and the JSON backup format. All decisions in this version are approved by the owner (v0.2, then the v0.3 additions for task lists, notes, tags, widgets and stored ordering, and the v0.4 clarifications, all on 2026-11-05). How services and repositories share transactions and report errors is in [ARCHITECTURE.md](ARCHITECTURE.md) §2.1–2.2. New proposals are marked **[Proposed]** until approved.
 
 **Precedence:** where this document and the design spec disagree, this document wins (owner decision, 2026-11-05).
 
@@ -13,12 +13,16 @@ This document defines the exact shape of stored records, the rules that keep the
 - **IDs:** strings created with `crypto.randomUUID()`, e.g. `"3f2b8c1e-…"`. Never reused, never changed. `randomUUID()` only works on secure pages (HTTPS or `localhost`). Acode's preview is one (confirmed 2026-11-05), so no fallback generator is needed.
 - **Timestamps:** ISO 8601 strings in UTC, e.g. `"2026-11-04T22:41:00.000Z"` (`new Date().toISOString()`). Readable in exports and sortable as text.
 - **Empty values:** optional text fields default to `""`; optional timestamps default to `null`. Fields are never left `undefined` in stored records.
-- **Text input:** trimmed before saving. Length limits are measured with JavaScript `.length`, so some emoji count as 2 characters.
+- **Text input:** trimmed at the start and end before saving. Multi-line fields (`Note.body`, `WorkSession.summary`, `nextAction`, `unresolvedQuestions`) are trimmed the same way, only at the very start and end. Lines inside them are never trimmed, so indentation and blank lines are kept. Length limits are measured with JavaScript `.length` after trimming, so some emoji count as 2 characters.
+- **Comparing names:** "ignoring letter case" means comparing `name.normalize("NFC").toLowerCase()`. Normalizing first makes an accented letter typed in two different ways (e.g. "é" as one character or as "e" plus an accent) count as the same. The stored name keeps its original spelling and case.
+- **`updatedAt` on side effects:** when an action changes a record as a side effect, that record's `updatedAt` is set too. Examples: renumbering `position` after a delete, removing a tag ID from tasks and notes, removing a list or note ID from a widget's `config`, and moving tasks to another list. The exception is Project (§2.1).
 - **Ownership:** services create IDs and timestamps; the UI never sets them.
 - **Stored order:** records the user can reorder (task lists, notes, widgets) have a `position` field: a whole number starting at `0`, with no gaps or repeats within the same project and record type. Moving an item up or down swaps its `position` with its neighbour's. Creating an item adds it at the end. Deleting an item renumbers the items after it. Each of these changes happens in one transaction.
 - **ID lists:** fields that hold IDs of other records (e.g. `tagIds`) are arrays of strings with no repeats. The order inside the array has no meaning unless the field says otherwise.
 
 ## 2. Entities
+
+Every field in the tables is present in every record. In the **Required** column, *yes* means the value can't be empty, and *no* means it may be empty: `""` for text, `[]` for lists. Fields that may be `null` show it in their type, e.g. `string | null`.
 
 ### 2.1 Project
 
@@ -71,7 +75,7 @@ A named group of tasks inside a project (design §5, e.g. "Literature", "Program
 | `taskListId` | string | yes | Must reference a task list in the same project. Changing it moves the task to another list |
 | `title` | string | yes | 1–200 characters after trimming |
 | `status` | string | yes | `"todo"`, `"doing"` or `"done"`; new tasks start as `"todo"` |
-| `tagIds` | string[] | yes | Tags from the same project; default `[]` |
+| `tagIds` | string[] | no | Tags from the same project; default `[]` |
 | `createdAt` | string | yes | Set once |
 | `updatedAt` | string | yes | Set on every change |
 
@@ -86,8 +90,8 @@ A titled, independently editable piece of text (design §5, e.g. "Lecture Notes"
 | `id` | string | yes | UUID |
 | `projectId` | string | yes | Must reference an existing project |
 | `title` | string | yes | 1–200 characters after trimming; doesn't have to be unique |
-| `body` | string | yes | Plain text; default `""`; up to 50,000 characters |
-| `tagIds` | string[] | yes | Tags from the same project; default `[]` |
+| `body` | string | no | Plain text; default `""`; up to 50,000 characters |
+| `tagIds` | string[] | no | Tags from the same project; default `[]` |
 | `position` | number | yes | Order among the project's notes (§1 Stored order) |
 | `createdAt` | string | yes | Set once |
 | `updatedAt` | string | yes | Set on every change |
@@ -141,9 +145,9 @@ A container in the project workspace that displays content (design §4). A widge
 | `projectId` | string | yes | Must reference an existing project |
 | `startedAt` | string | yes | Set when the session starts |
 | `endedAt` | string \| null | yes | `null` = active |
-| `summary` | string | yes | What was done; `""` while active, non-empty once ended |
-| `nextAction` | string | yes | The first thing to do next time; `""` while active, non-empty once ended |
-| `unresolvedQuestions` | string | yes | Free text, one question per line; `""` if none |
+| `summary` | string | yes, once ended | What was done; `""` while active, non-empty once ended |
+| `nextAction` | string | yes, once ended | The first thing to do next time; `""` while active, non-empty once ended |
+| `unresolvedQuestions` | string | no | Free text, one question per line; `""` if none |
 
 A session's closing fields (`summary`, `nextAction`, `unresolvedQuestions`) are written when it ends. `summary` and `nextAction` are required to end a session; `unresolvedQuestions` may stay `""`. After that, the session can still be edited to fix typos, but `summary` and `nextAction` can't be cleared, and `startedAt` and `endedAt` stay fixed.
 
@@ -154,7 +158,7 @@ A session's closing fields (`summary`, `nextAction`, `unresolvedQuestions`) are 
 3. **Complete closing notes:** a session can only end with a non-empty `summary` and `nextAction` (after trimming). Ending without them is refused. Edits to an ended session can't clear them.
 4. **Cancelling and deleting sessions and tasks:** an active session can be cancelled, which deletes it without saving anything. An ended session or a task can be deleted after the user confirms. All of these remove the record permanently; there is no trash.
 5. **Valid references:** a task list, task, note, tag, widget or session's `projectId` must point to an existing project. Every other reference (`taskListId`, `tagIds`, and the IDs in a widget's `config`) must point to an existing record **in the same project**.
-6. **Archived projects are read-only:** an archived project and everything it owns (task lists, tasks, notes, tags, widgets and sessions) can't be added to, edited, reordered or deleted. This includes changing task status, starting sessions and editing the project's own fields. The only changes allowed are unarchiving it and deleting the whole project (rule 7). A project with an active session can't be archived until that session ends or is cancelled.
+6. **Archived projects are read-only:** an archived project and everything it owns (task lists, tasks, notes, tags, widgets and sessions) can't be added to, edited, reordered or deleted. This includes changing task status, starting sessions and editing the project's own fields. The only changes allowed are unarchiving it, deleting the whole project (rule 7), and collapsing or expanding lists and notes in its widgets (the widget's `config.collapsedIds`). Collapsing is a view setting, not content, so it's the one edit allowed and it doesn't count as changing the project. A project with an active session can't be archived until that session ends or is cancelled.
 7. **Deleting a project** also deletes everything it owns (task lists, tasks, notes, tags, widgets and sessions) in the same transaction, after the user confirms. Archived projects can be deleted too. A project with an active session can't be deleted until that session ends or is cancelled.
 8. **Removing a widget** deletes only the widget record. The task lists, tasks, notes, tags and sessions it displayed are kept and can be shown again by adding them to a widget. No confirmation is needed, because no content is lost.
 9. **Deleting a task list** requires the user to choose what happens to its tasks, after confirming:
@@ -196,6 +200,11 @@ A **multiEntry** index adds one index entry for each ID in the array, so "all ta
 **Note:** IndexedDB leaves records out of an index when the indexed field is `null`, so an index on `endedAt` can't find the active session. For the MVP, the service finds the active session by scanning `workSessions`, which is fast for single-user data volumes.
 
 **Schema changes:** any change to stores or indexes increases the database version and adds a step to the `onupgradeneeded` handler. Steps run in order and never rewrite earlier ones.
+
+**Keeping data safe:**
+
+- **Persistent storage:** at startup, the app calls `navigator.storage.persist()` (if available) so the browser doesn't clear the data when the device runs low on space. If the browser says no, the app still works; the result can be checked with `navigator.storage.persisted()`.
+- **Open in two places:** the app may be open in more than one tab or window at once (e.g. Acode's preview and a desktop browser on the same address). Every open connection listens for `versionchange` and closes itself, so a database upgrade in another tab isn't stuck. Opening the database handles `blocked` by telling the user to close the app's other tabs.
 
 ## 6. JSON export/import format
 
