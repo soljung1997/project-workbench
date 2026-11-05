@@ -10,10 +10,10 @@
 - **Runtime:** Browser only. No framework, build step, package manager, or backend required for the MVP.
 - **Persistence:** IndexedDB, accessed through a small asynchronous repository layer.
 - **Backup:** User-triggered JSON export/import, with a version number and validation.
-- **Development:** Spck Editor on Android; GitHub for source control.
+- **Development:** Acode on Android (moved from Spck Editor in Nov 2026), with Claude Code in Acode's terminal; GitHub for source control.
 - **Future delivery:** Hosted Progressive Web App (PWA) first; Electron packaging only if desktop-specific features justify it.
 
-**Compatibility checkpoint:** Before implementing features, verify that Spck's HTML preview runs local JavaScript ES module imports and IndexedDB reliably. If not, adapt the preview approach without changing the product's core architecture.
+**Compatibility checkpoint:** Before implementing features, verify that Acode's HTML preview runs local JavaScript ES module imports and IndexedDB reliably, and whether it is a secure page (HTTPS or `localhost`) so `crypto.randomUUID()` works. If not, adapt the preview approach without changing the product's core architecture.
 
 ## 2. Module boundaries
 
@@ -32,6 +32,8 @@ IndexedDB (local browser data)
 - **Repositories:** Provide consistent asynchronous data-access methods. No UI logic.
 
 ## 3. Core data entities
+
+Field-level definitions, rules and the export format are in [DATA_MODEL.md](DATA_MODEL.md).
 
 - **Project:** `id`, `name`, `description`, `archivedAt`, `createdAt`, `updatedAt`.
 - **Task:** `id`, `projectId`, `title`, `status`, `createdAt`, `updatedAt`.
@@ -54,7 +56,9 @@ project-workbench/
 │   ├── services/      # Use cases and rules
 │   └── storage/       # IndexedDB and repositories
 ├── docs/
-│   └── ARCHITECTURE.md
+│   ├── ARCHITECTURE.md
+│   └── DATA_MODEL.md
+├── CLAUDE.md          # Context for Claude Code sessions
 └── README.md
 ```
 
@@ -64,8 +68,8 @@ Only create modules when a feature actually needs them; no placeholder files.
 
 - **Offline-first and single-user.** No accounts, synchronization, or server for the MVP.
 - **Local data is separate from GitHub.** Git commits preserve source code, not users' saved projects.
-- **Data portability matters.** Spck preview, a hosted website, and a future desktop wrapper may use different storage origins. Export/import is the planned migration path.
-- **Small, reviewable changes.** Develop on feature branches; keep `main` stable. AI implements code, while the human owner approves architectural decisions and tests behaviour in Spck.
+- **Data portability matters.** Acode's preview, a hosted website, and a future desktop wrapper may use different storage origins. Export/import is the planned migration path.
+- **Small, reviewable changes.** Develop on feature branches; keep `main` stable. AI implements code, while the human owner approves architectural decisions and tests behaviour in Acode.
 
 ## 6. Deferred decisions
 
