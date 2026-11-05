@@ -11,7 +11,19 @@ Project Workbench is a single-user, offline-first browser app. It tracks project
 - **Editor:** Acode on Android (moved from Spck Editor in Nov 2026). Claude Code runs inside Acode's terminal.
 - **Repo path:** `/public/project-workbench`; remote `origin` on GitHub; default branch `main`.
 - **No build tools:** no npm, no framework, no bundler. Plain HTML/CSS and JavaScript (ES modules) only.
-- Not yet confirmed in Acode's preview: whether ES module imports, IndexedDB and `crypto.randomUUID()` work (randomUUID needs a secure page: HTTPS or `localhost`).
+
+## Acode preview (tested 2026-11-05)
+
+`dev/preview-check.html` confirmed that Acode's preview supports everything the MVP needs: it's a secure page (`localhost`), so ES module imports, `crypto.randomUUID()` and IndexedDB all work, and saved data survives reloads and app restarts.
+
+**Port problem:** both preview port settings are 8158, but after Acode is swiped away from recent apps and reopened, the preview starts on **8159**. The cause: a stuck listener keeps holding 8158 (it accepts connections but never replies), probably because Acode's background service survives the swipe. Force stopping Acode frees the port.
+
+- The browser keeps IndexedDB data separately for each address, so `localhost:8158` and `localhost:8159` have **separate data**. A port change makes saved data seem to disappear.
+- **Routine:** the owner force stops Acode at the end of each session, which keeps the preview on 8158.
+- If the preview shows 8159: force stop Acode, reopen it, and start the preview again.
+- To check from the terminal: `curl -s -m 3 -o /dev/null -w "%{http_code}\n" http://localhost:8158/` returns `200` while the preview is open on 8158. It returns `000` both when nothing is running and when 8158 is stuck. To tell those apart, run `curl -v`: "Connected" followed by a timeout means stuck.
+- Use JSON export/import to move real data between the two ports.
+- Acode adds its own console scripts and a viewport tag to served pages. App code must not depend on them.
 
 ## Docs
 
@@ -39,4 +51,5 @@ UI (js/ui/) → services (js/services/) → repositories (js/storage/) → Index
 
 - Code is a bare skeleton: a minimal `index.html` and empty `css/style.css` and `js/app.js`.
 - Branch `docs/data-model`: `DATA_MODEL.md` approved, `ARCHITECTURE.md` updated for Acode, this file added.
-- Next step: check what Acode's preview supports (ES modules, IndexedDB, `crypto.randomUUID()`), then start the storage layer.
+- Acode preview check passed (see "Acode preview" above). `dev/` holds the check page. It is not committed yet; branch `chore/preview-check` (from `main`) was created for it.
+- Next step: start the storage layer.
