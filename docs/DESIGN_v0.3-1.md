@@ -127,7 +127,7 @@ The MVP is complete when a user can:
 6. Start a session, enter optional context, refresh the app, and recover the same active session.
 7. End a session and view its saved context in the workspace and chronological session history.
 8. Export data and restore it from a valid backup without losing relationships or widget configurations.
-9. Complete these flows in Spck's Android preview and in a desktop browser.
+9. Complete these flows in Acode's Android preview and in a desktop browser.
 
 ## 8. Deferred Features
 Accounts, cloud sync, collaboration, calendar integration, notifications, AI features, advanced analytics, custom user-defined widget types, nested widgets, freely draggable layouts, adjustable widget widths, and native desktop integrations.
@@ -135,6 +135,6 @@ Accounts, cloud sync, collaboration, calendar integration, notifications, AI fea
 ## 9. Pending Design Work
 - Visual design: typography, colors, spacing, icons, and detailed wireframes.
 - Final details for list-deletion handling and widget content-selection controls.
-- Confirm technical compatibility of the chosen module/storage approach in Spck.
+- ~~Confirm technical compatibility of the chosen module/storage approach.~~ Done: ES modules, `crypto.randomUUID()` and IndexedDB were confirmed in Acode's preview on 2026-11-05.
 
-**Related documents:** `PROJECT.md` or the project brief defines purpose; `ARCHITECTURE.md` defines technical layers and storage. Because this revision adds widget, task-list, note, and tag entities, the architecture document should be updated to reflect those models before implementation.
+**Related documents:** §1 of this document defines the product's purpose. `ARCHITECTURE.md` defines technical layers and storage. `DATA_MODEL.md` defines the stored records and rules, including the widget, task-list, note, and tag entities this revision adds (v0.3). Where it and this document disagree, `DATA_MODEL.md` takes precedence.

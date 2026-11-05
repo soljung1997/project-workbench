@@ -28,7 +28,7 @@ IndexedDB (local browser data)
 ```
 
 - **UI:** Renders screens and forwards user actions. No direct database access.
-- **Services:** Manage projects, tasks, and work sessions. No DOM or browser storage code.
+- **Services:** Manage projects, task lists, tasks, notes, tags, widgets, and work sessions. No DOM or browser storage code.
 - **Repositories:** Provide consistent asynchronous data-access methods. No UI logic.
 
 ## 3. Core data entities
@@ -36,10 +36,14 @@ IndexedDB (local browser data)
 Field-level definitions, rules and the export format are in [DATA_MODEL.md](DATA_MODEL.md).
 
 - **Project:** `id`, `name`, `description`, `archivedAt`, `createdAt`, `updatedAt`.
-- **Task:** `id`, `projectId`, `title`, `status`, `createdAt`, `updatedAt`.
+- **TaskList**: `id`, `projectId`, `name`, `position`, `createdAt`, `updatedAt`.
+- **Task:** `id`, `projectId`, `taskListId`, `title`, `status`, `tagIds`, `createdAt`, `updatedAt`.
+- **Note**: `id`, `projectId`, `title`, `body`, `tagIds`, `position`, `createdAt`, `updatedAt`.
+- **Tag**: `id`, `projectId`, `name`, `createdAt`, `updatedAt`.
+- **Widget**: `id`, `projectId`, `type`, `title`, `position`, `config`, `createdAt`, `updatedAt`.
 - **WorkSession:** `id`, `projectId`, `startedAt`, `endedAt`, `summary`, `nextAction`, `unresolvedQuestions`.
 
-Each record has a stable unique ID. Tasks and sessions belong to a project. A session with no `endedAt` is active. **MVP rule:** at most one active session across the application.
+Each record has a stable unique ID. Everything except Project belongs to a project, and tasks also belong to a task list. Widgets only display content: removing a widget never deletes the content it showed. A session with no `endedAt` is active. **MVP rule:** at most one active session across the application.
 
 The **resume context** is derived from the most recently completed session's summary, next action, and unresolved questions rather than duplicated on the project record.
 
