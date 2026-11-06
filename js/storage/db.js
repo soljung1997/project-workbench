@@ -47,6 +47,11 @@ let dbPromise = null;
 
 // Opens the database once and reuses the connection.
 //
+// Startup order: app.js must call openDb({ onBlocked, onVersionChange })
+// before anything else uses the database. Only the first call's handlers
+// are used; later calls (including the one inside withTransaction) just
+// get the open connection.
+//
 // Optional handlers let the UI tell the user what's going on, since this
 // layer writes no user-facing text:
 // - onBlocked: another tab holds an older version open. Opening waits until
@@ -100,12 +105,18 @@ export async function withTransaction(storeNames, mode, work) {
   try {
     tx = db.transaction(storeNames, mode);
   } catch (error) {
-    throw storageFailed("Could not start a transaction", error);
+    // Here (and only here) InvalidStateError means the connection was
+    // closed, e.g. by another tab's upgrade. That's not a bug.
+    if (error instanceof DOMException && error.name === "InvalidStateError") {
+      throw storageFailed("The database connection is closed", error);
+    }
+    throw toWorkbenchError(error, "Could not start a transaction");
   }
 
   const finished = new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve();
-    tx.onabort = () => reject(tx.error);
+    tx.onabort = () =>
+      reject(tx.error ?? new DOMException("Transaction aborted", "AbortError"));
   });
   // Errors are handled below; this stops an early abort from being
   // reported as unhandled before we get there.
@@ -120,13 +131,13 @@ export async function withTransaction(storeNames, mode, work) {
     } catch {
       // Already finished or aborted (e.g. a failed request aborted it).
     }
-    throw toWorkbenchError(error);
+    throw toWorkbenchError(error, "A database request failed");
   }
 
   try {
     await finished;
   } catch (error) {
-    throw storageFailed("The transaction did not complete", error);
+    throw toWorkbenchError(error, "The transaction did not complete");
   }
   return result;
 }
@@ -151,11 +162,25 @@ export async function requestPersistentStorage() {
   }
 }
 
-// IndexedDB failures become storage-failed. WorkbenchErrors pass through,
-// and anything else is a bug, which surfaces as it is (ARCHITECTURE.md §2.2).
-function toWorkbenchError(error) {
-  if (error instanceof DOMException) {
-    return storageFailed("A database request failed", error);
+// IndexedDB error names that mean storage itself failed (full, broken or
+// aborted by the browser), not a mistake in our code. InvalidStateError
+// isn't listed: inside an action it means the code used a transaction that
+// had already finished (a bug); withTransaction handles the closed-
+// connection case itself.
+const STORAGE_FAILURE_NAMES = new Set([
+  "QuotaExceededError",
+  "UnknownError",
+  "VersionError",
+  "AbortError",
+]);
+
+// Storage failures become storage-failed. Everything else passes through
+// as it is: WorkbenchErrors from services, and bugs (e.g. a wrong store
+// name, a record without an id, or waiting on a timer inside a
+// transaction), so they're easy to spot (ARCHITECTURE.md §2.2).
+function toWorkbenchError(error, message) {
+  if (error instanceof DOMException && STORAGE_FAILURE_NAMES.has(error.name)) {
+    return storageFailed(message, error);
   }
   return error;
 }
