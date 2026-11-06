@@ -71,7 +71,7 @@ UI (js/ui/) → services (js/services/) → repositories (js/storage/) → Index
 
 ## Current status (2026-11-05)
 
-- Code is a bare skeleton: a minimal `index.html` and empty `css/style.css` and `js/app.js`.
+- Code: a minimal `index.html`, empty `css/style.css` and `js/app.js`, and the storage layer (branch `feat/storage-layer`): `js/errors.js`, `js/storage/db.js` (schema v1, `openDb`, `withTransaction`, `requestPersistentStorage`) and `js/storage/repositories.js` (one repo per store). Nothing calls it yet.
 - Acode preview check passed (see "Acode preview" above). The check page is in `dev/` on branch `chore/preview-check`, kept until the MVP is done.
 - Docs: `ARCHITECTURE.md` v0.2 (transactions, errors, v0.3 entities), `DATA_MODEL.md` v0.4 (approved; v0.4 adds clarifications on trimming, name comparison, `updatedAt` side effects, collapsing in archived projects, persistent storage and multi-tab handling), `DESIGN_v0.3-1.md` (draft; `DATA_MODEL.md` wins on conflicts).
-- Next step: start the storage layer (`js/storage/db.js`, the repositories, and `js/errors.js`), following `DATA_MODEL.md` §5 and `ARCHITECTURE.md` §2.1–2.2.
+- Next step: the services (`js/services/`), starting with projects (create with defaults, rename, archive, delete), following `DATA_MODEL.md` §2–3.
